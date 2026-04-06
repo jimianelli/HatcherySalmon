@@ -18,39 +18,39 @@ releases <- data.frame(
 params <- tribble(
   ~Species, ~Age, ~M,  ~m,  ~Weight_kg, ~Q_B,
   # Pink (2-year life cycle, 100% spawn at age 2)
-  "Pink",   1,    1.6, 0.0,  0.15,       8.0,
-  "Pink",   2,    0.4, 1.0,  1.50,       5.0,
+  "Pink",   1,    3.22, 0.0,  0.15,       8.0,
+  "Pink",   2,    0.22, 1.0,  1.50,       5.0,
   "Pink",   3,    0.0, 1.0,  0.00,       0.0,
   "Pink",   4,    0.0, 1.0,  0.00,       0.0,
   "Pink",   5,    0.0, 1.0,  0.00,       0.0,
   
   # Chum (Stretches to 5 years)
-  "Chum",   1,    1.6, 0.0,  0.15,       8.0,
-  "Chum",   2,    0.4, 0.0,  1.00,       5.0,
-  "Chum",   3,    0.3, 0.3,  2.50,       4.0,
-  "Chum",   4,    0.3, 0.6,  4.00,       3.5,
-  "Chum",   5,    0.2, 1.0,  5.50,       3.0,
+  "Chum",   1,    3.51, 0.0,  0.15,       8.0,
+  "Chum",   2,    0.22, 0.0,  1.00,       5.0,
+  "Chum",   3,    0.22, 0.3,  2.50,       4.0,
+  "Chum",   4,    0.22, 0.6,  4.00,       3.5,
+  "Chum",   5,    0.22, 1.0,  5.50,       3.0,
   
   # Sockeye
-  "Sockeye",1,    1.4, 0.0,  0.20,       7.0,
-  "Sockeye",2,    0.4, 0.1,  1.20,       5.0,
-  "Sockeye",3,    0.3, 0.5,  2.50,       4.0,
-  "Sockeye",4,    0.3, 1.0,  3.50,       3.5,
+  "Sockeye",1,    3.22, 0.0,  0.20,       7.0,
+  "Sockeye",2,    0.22, 0.1,  1.20,       5.0,
+  "Sockeye",3,    0.22, 0.5,  2.50,       4.0,
+  "Sockeye",4,    0.22, 1.0,  3.50,       3.5,
   "Sockeye",5,    0.0, 1.0,  0.00,       0.0,
   
   # Coho (Usually out by Ocean Age 3)
-  "Coho",   1,    1.2, 0.0,  0.30,       7.0,
-  "Coho",   2,    0.3, 0.1,  1.50,       5.0,
-  "Coho",   3,    0.3, 1.0,  3.50,       4.0,
+  "Coho",   1,    2.81, 0.0,  0.30,       7.0,
+  "Coho",   2,    0.22, 0.1,  1.50,       5.0,
+  "Coho",   3,    0.22, 1.0,  3.50,       4.0,
   "Coho",   4,    0.0, 1.0,  0.00,       0.0,
   "Coho",   5,    0.0, 1.0,  0.00,       0.0,
   
   # Chinook (Lower early mortality, biggest weight, late maturation)
-  "Chinook",1,    1.2, 0.0,  0.20,       7.0,
-  "Chinook",2,    0.3, 0.05, 1.50,       5.0,
-  "Chinook",3,    0.2, 0.2,  4.00,       4.0,
-  "Chinook",4,    0.2, 0.5,  7.00,       3.5,
-  "Chinook",5,    0.2, 1.0,  10.00,      3.0
+  "Chinook",1,    3.91, 0.0,  0.20,       7.0,
+  "Chinook",2,    0.22, 0.05, 1.50,       5.0,
+  "Chinook",3,    0.22, 0.2,  4.00,       4.0,
+  "Chinook",4,    0.22, 0.5,  7.00,       3.5,
+  "Chinook",5,    0.22, 1.0,  10.00,      3.0
 )
 
 # ==========================================
@@ -157,5 +157,33 @@ cat("- They consume roughly", round(pollock_biomass_multiplier, 1),
 
 cat("TERRESTRIAL COMPARISON (Alaskan Caribou):\n")
 cat("- To match this level of grazing on land, you would have to unleash a herd of\n  ", 
-    comma(round(caribou_equivalent)), "Caribou onto the tundra (over 4x the global wild population).\n")
+    comma(round(caribou_equivalent)), "Caribou onto the tundra (over 2x the global wild population).\n")
+cat("======================================================\n")
+
+# ==========================================
+# IMPLICIT MARINE SURVIVAL CALCULATIONS
+# ==========================================
+
+survival_summary <- all_species_results %>%
+  group_by(Species) %>%
+  mutate(
+    # Fish that survive natural mortality (M) and then mature (m)
+    Mature_Returns = Numbers_Alive * exp(-M) * m
+  ) %>%
+  summarize(
+    Smolts_Released = max(Numbers_Alive[Age == 1]),
+    Total_Returns = sum(Mature_Returns)
+  ) %>%
+  mutate(
+    Marine_Survival_Rate = Total_Returns / Smolts_Released,
+    Survival_Percent = percent(Marine_Survival_Rate, accuracy = 0.01)
+  ) %>%
+  # FIX: Sort the data BEFORE selecting the final columns
+  arrange(desc(Marine_Survival_Rate)) %>%
+  select(Species, Smolts_Released, Total_Returns, Survival_Percent) 
+
+cat("\n======================================================\n")
+cat("IMPLICIT MARINE SURVIVAL RATES:\n")
+cat("======================================================\n")
+print(survival_summary %>% mutate(across(where(is.numeric), ~comma(round(.)))))
 cat("======================================================\n")
